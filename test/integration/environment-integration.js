@@ -1,44 +1,55 @@
-export function environmentTests(t, space, waitForEnvironmentToBeReady) {
-  t.test('creates an environment', (t) => {
-    t.plan(2)
+import { after, before, describe, test } from 'mocha'
+import { client, createTestSpace, waitForEnvironmentToBeReady } from '../helpers'
+import { expect } from 'chai'
+
+describe('Environment Api', function () {
+  this.timeout(60000)
+
+  let space
+
+  before(async () => {
+    space = await createTestSpace(client(), 'Environment')
+  })
+
+  after(async () => {
+    return space.delete()
+  })
+
+  test('creates an environment', async () => {
     return space.createEnvironment({ name: 'test-env' }).then((response) => {
-      t.ok(response.sys.type, 'Environment', 'env is created')
-      t.ok(response.name, 'test-env', 'env is created with name')
+      expect(response.sys.type).equals('Environment', 'env is created')
+      expect(response.name).equals('test-env', 'env is created with name')
     })
   })
 
-  t.test('creates an environment with an id', (t) => {
-    t.plan(2)
+  test('creates an environment with an id', async () => {
     return space.createEnvironmentWithId('myId', { name: 'myId' }).then((response) => {
-      t.equals(response.name, 'myId', 'env was created with correct name')
-      t.equals(response.sys.id, 'myId', 'env was created with id')
+      expect(response.name).equals('myId', 'env was created with correct name')
+      expect(response.sys.id).equals('myId', 'env was created with id')
     })
   })
 
-  t.test('env is created with master as source when no source id is provided', (t) => {
-    t.plan(4)
+  test('env is created with master as source when no source id is provided', async () => {
     return space
       .createContentTypeWithId('testEntity', { name: 'testEntity' })
       .then((contentType) => contentType.publish())
       .then(() => space.createEnvironmentWithId('newEnv', { name: 'newEnv' }))
       .then((environment) => {
-        t.equals(environment.name, 'newEnv', 'env is created with correct name')
-        t.equals(environment.sys.id, 'newEnv', 'env is created with correct id')
+        expect(environment.name).equals('newEnv', 'env is created with correct name')
+        expect(environment.sys.id).equals('newEnv', 'env is created with correct id')
         return waitForEnvironmentToBeReady(space, environment)
       })
       .then((readyEnv) => readyEnv.getContentType('testEntity'))
       .then((testCts) => {
-        t.ok(testCts)
-        t.equals(
-          testCts.sys.id,
+        expect(testCts).ok
+        expect(testCts.sys.id).equals(
           'testEntity',
           'new env still has content type, created from master'
         )
       })
   })
 
-  t.skip('creates environment from given source environment', (t) => {
-    t.plan(2)
+  test.skip('creates environment from given source environment', async () => {
     let fromMasterCtCount = 0
     // create an env from master, note how many contentTypes it has
     return (
@@ -55,8 +66,7 @@ export function environmentTests(t, space, waitForEnvironmentToBeReady) {
         // confirm num cts in master
         .then(() => space.getContentTypes())
         .then((masterCts) => {
-          t.notEquals(
-            masterCts,
+          expect(masterCts).equals(
             fromMasterCtCount,
             'master has more content types than "fromMaster" env'
           )
@@ -69,12 +79,11 @@ export function environmentTests(t, space, waitForEnvironmentToBeReady) {
         .then((readyNewEnv) => readyNewEnv.getContentTypes())
         // expect cts to be same as "fromMaster"
         .then((cts) => {
-          t.equals(
-            cts.items.length,
+          expect(cts.items.length).equals(
             fromMasterCtCount,
             'new env with non-master source has correct num content types'
           )
         })
     )
   })
-}
+})
